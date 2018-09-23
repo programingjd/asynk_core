@@ -59,13 +59,13 @@ class SocketTests {
       runBlocking {
         launch {
           server.use { _ ->
-            while (isActive) {
+            //while (isActive) {
               server.connect().use {
                 val buffer = ByteBuffer.wrap(bytes)
                 while (buffer.remaining() > 0) it.writeFrom(buffer)
                 it
               }
-            }
+            //}
           }
         }
         async {
