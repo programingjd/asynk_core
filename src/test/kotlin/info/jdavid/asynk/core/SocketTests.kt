@@ -1,9 +1,9 @@
 package info.jdavid.asynk.core
 
-import kotlinx.coroutines.experimental.TimeoutCancellationException
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.cancelAndJoin
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.isActive
+import kotlinx.coroutines.experimental.joinAll
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
 import kotlinx.coroutines.experimental.withTimeout
@@ -18,77 +18,146 @@ import java.security.SecureRandom
 
 class SocketTests {
 
-  @Test fun testReadWrite() {
-    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
-    val port = (server.localAddress as InetSocketAddress).port
-
-    val bytes = "Test".toByteArray()
-    val n = bytes.size
-    runBlocking {
-      val s = async {
-        server.connect().use {
-          val buffer = ByteBuffer.wrap(bytes)
-          while (buffer.remaining() > 0) it.writeFrom(buffer)
-          it
-        }
-      }
-      val c = AsynchronousSocketChannel.open()
-      val r = async {
-        c.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
-      c.use {
-          val buffer = ByteBuffer.allocate(n + 2)
-          while (buffer.position() < n) it.readTo(buffer)
-          buffer.flip()
-          String(ByteArray(buffer.remaining()).apply { buffer.get(this) })
-        }
-      }.await()
-      assertEquals("Test", r)
-      assertFalse(c.isOpen)
-      assertFalse(s.await().isOpen)
-    }
-  }
-
-  @Test fun testWriteTimeout() {
-    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
-    val port = (server.localAddress as InetSocketAddress).port
-
-    val c = AsynchronousSocketChannel.open()
-    val bytes = SecureRandom.getSeed(128 * 1024 * 1024)
-    val n = bytes.size
-    try {
+  @Test fun testAcceptTimeout() {
+    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
       runBlocking {
         launch {
-          server.use { _ ->
-            //while (isActive) {
-              server.connect().use {
-                val buffer = ByteBuffer.wrap(bytes)
-                while (buffer.remaining() > 0) it.writeFrom(buffer)
-                it
-              }
-            //}
+          withTimeout(1000L) {
+            while (isActive) server.connect()
           }
-        }
-        async {
-          c.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
-          c.use {
-            withTimeout(1000) {
-              val buffer = ByteBuffer.allocate(16)
-              while (buffer.position() < n) it.readTo(buffer)
-              buffer.flip()
-              ByteArray(buffer.remaining()).apply { buffer.get(this) }
-            }
-          }
-        }.await()
+        }.join()
+        assertFalse(server.isOpen)
       }
     }
-    catch (ignore: TimeoutCancellationException) {}
-    assertFalse(c.isOpen)
-    assertFalse(server.isOpen)
   }
 
-  @Test fun testReadTimeout() {
-
+  @Test fun testRead() {
+    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+      val port = (server.localAddress as InetSocketAddress).port
+      val socket2 = AsynchronousSocketChannel.open()
+      socket2.use {
+        runBlocking {
+          val accept = launch {
+            while (isActive) {
+              val socket1 = server.connect()
+              launch {
+                socket1.writeFrom(ByteBuffer.wrap("Test".toByteArray()), true)
+              }
+            }
+          }
+          joinAll(
+            launch {
+              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              val buffer = ByteBuffer.allocate(512)
+              val n = socket2.readTo(buffer)
+              buffer.flip()
+              assertTrue(n > 0L)
+              assertEquals("Test".substring(0, n.toInt()),
+                           String(ByteArray(buffer.remaining()).apply { buffer.get(this) }))
+            }
+          )
+          accept.cancelAndJoin()
+        }
+      }
+    }
   }
 
+  @Test fun testReadMany() {
+    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+      val port = (server.localAddress as InetSocketAddress).port
+      val socket2 = AsynchronousSocketChannel.open()
+      socket2.use {
+        runBlocking {
+          val accept = launch {
+            val bytes = SecureRandom.getSeed(1024 * 1024)
+            while (isActive) {
+              val socket1 = server.connect()
+              launch {
+                while (true) socket1.writeFrom(ByteBuffer.wrap(bytes), true)
+              }
+            }
+          }
+          joinAll(
+            launch {
+              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              val buffer = ByteBuffer.allocate(32*1024*1024)
+              val n = socket2.readTo(buffer, true)
+              assertEquals(buffer.capacity().toLong(), n)
+            }
+          )
+          accept.cancelAndJoin()
+        }
+      }
+    }
+  }
+
+  @Test fun testWrite() {
+    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+      val port = (server.localAddress as InetSocketAddress).port
+      val socket2 = AsynchronousSocketChannel.open()
+      socket2.use {
+        runBlocking {
+          val bytes = "Test\r\n".toByteArray()
+          val accept = launch {
+            while (isActive) {
+              val socket1 = server.connect()
+              launch {
+                val buffer = ByteBuffer.allocate(bytes.size)
+                socket1.readTo(buffer, true)
+                buffer.flip()
+                assertEquals("Test\r\n",
+                             String(ByteArray(buffer.remaining()).apply { buffer.get(this) }))
+              }
+            }
+          }
+          joinAll(
+            launch {
+              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              (0..10).forEach {
+                val n = socket2.writeFrom(ByteBuffer.wrap(bytes), true)
+                assertEquals(bytes.size.toLong(), n)
+              }
+              delay(100)
+            }
+          )
+          accept.cancelAndJoin()
+        }
+      }
+    }
+  }
+
+  @Test fun testWriteMany() {
+    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+      val port = (server.localAddress as InetSocketAddress).port
+      val socket2 = AsynchronousSocketChannel.open()
+      socket2.use {
+        runBlocking {
+          val accept = launch {
+            val buffer = ByteBuffer.allocate(32 * 1024 * 1024)
+            while (isActive) {
+              buffer.clear()
+              val socket1 = server.connect()
+              launch {
+                val n = socket1.readTo(buffer, true)
+                assertEquals(buffer.capacity().toLong(), n)
+              }
+            }
+          }
+          joinAll(
+            launch {
+              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              val bytes = SecureRandom.getSeed(1024 * 1024)
+              (0..32).forEach {
+                val n = socket2.writeFrom(ByteBuffer.wrap(bytes), true)
+                assertEquals(bytes.size.toLong(), n)
+              }
+              delay(100)
+            }
+          )
+          accept.cancelAndJoin()
+        }
+      }
+    }
+  }
 
 }

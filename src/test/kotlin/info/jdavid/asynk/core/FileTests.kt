@@ -1,6 +1,8 @@
 package info.jdavid.asynk.core
 
 import kotlinx.coroutines.experimental.TimeoutCancellationException
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.joinAll
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
 import kotlinx.coroutines.experimental.withTimeout
@@ -15,35 +17,19 @@ import java.security.SecureRandom
 
 class FileTests {
 
-  @Test fun testReadWrite() {
+  @Test fun testRead() {
     File.createTempFile("test", "file").let { file ->
       try {
-        file.writeBytes(byteArrayOf())
-        val buffer = ByteBuffer.wrap("Test".toByteArray())
-        val n = buffer.remaining()
-        val c1 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE)
-        c1.use {
-          runBlocking {
-            var pos = 0L
-            while (pos < n) {
-              pos += it.writeFrom(buffer, pos)
-            }
-          }
+        file.writeBytes("Test".toByteArray())
+        val buffer = ByteBuffer.allocate(64)
+        AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
+          val p = runBlocking {
+            it.readTo(buffer, 0)
+          }.toInt()
+          buffer.flip()
+          assertTrue(p > 0)
+          assertEquals("Test".substring(0, p), String(ByteArray(p).apply { buffer.get(this) }))
         }
-        assertFalse(c1.isOpen)
-        buffer.clear()
-        val c2 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ)
-        c2.use {
-          runBlocking {
-            var pos = 0L
-            while (pos < n) {
-              pos += it.readTo(buffer, pos)
-            }
-          }
-        }
-        assertFalse(c2.isOpen)
-        buffer.flip()
-        assertEquals("Test", String(ByteArray(buffer.remaining()).apply { buffer.get(this) }))
       }
       finally {
         file.delete()
@@ -51,30 +37,30 @@ class FileTests {
     }
   }
 
-  @Test fun testWriteTimeout() {
+  @Test fun testReadAll() {
     File.createTempFile("test", "file").let { file ->
       try {
-        file.writeBytes(byteArrayOf())
-        val bytes = SecureRandom.getSeed(128*1024*1024)
-        val buffer = ByteBuffer.wrap(bytes)
-        val n = buffer.remaining()
-        val c1 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE)
+        val bytes = SecureRandom.getSeed(32*1024*1024)
+        file.writeBytes(bytes)
         runBlocking {
-          var pos = 0L
-          try {
-            c1.use {
-              withTimeout(10) {
-                while (pos < n) {
-                  pos += it.writeFrom(buffer, pos)
-                }
+          joinAll(
+            launch {
+              val buffer = ByteBuffer.allocate(32*1024*1024-1)
+              AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
+                val p = it.readTo(buffer, 0, true)
+                assertEquals(buffer.capacity().toLong(), p)
+                buffer.clear()
+                assertEquals(1L, it.readTo(buffer, p))
+              }
+            },
+            launch {
+              val buffer = ByteBuffer.allocate(32*1024*1024+1)
+              AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
+                val p = it.readTo(buffer, 0, true)
+                assertEquals(buffer.capacity().toLong() - 1, p)
               }
             }
-            fail<Nothing>()
-          }
-          catch (e: TimeoutCancellationException) {
-            assertFalse(c1.isOpen)
-            assertEquals(0L, pos)
-          }
+          )
         }
       }
       finally {
@@ -88,25 +74,91 @@ class FileTests {
       try {
         val bytes = SecureRandom.getSeed(128*1024*1024)
         file.writeBytes(bytes)
-        val n = bytes.size
-        val buffer = ByteBuffer.allocate(n)
-        val c1 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ)
+        val buffer = ByteBuffer.allocate(128 * 1024 * 1024 - 1)
+        val channel = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ)
         runBlocking {
-          var pos = 0L
-          try {
-            c1.use {
-              withTimeout(10) {
-                while (pos < n) {
-                  pos += it.readTo(buffer, pos)
+          channel.use {
+            try {
+              async {
+                withTimeout(50L) {
+                  val p = it.readTo(buffer, 0, true)
+                  fail<Nothing>()
                 }
-              }
+              }.await()
             }
-            fail<Nothing>()
+            catch (e: TimeoutCancellationException) {
+              assertFalse(channel.isOpen)
+            }
           }
-          catch (e: TimeoutCancellationException) {
-            assertFalse(c1.isOpen)
-            assertEquals(0L, pos)
-            assertTrue(buffer.position() < n)
+        }
+      }
+      finally {
+        file.delete()
+      }
+    }
+  }
+
+  @Test fun testWrite() {
+    File.createTempFile("test", "file").let { file ->
+      try {
+        file.writeBytes(byteArrayOf())
+        val buffer = ByteBuffer.wrap("Test".toByteArray())
+        AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE).use {
+          val p = runBlocking {
+            it.writeFrom(buffer, 0)
+          }.toInt()
+          assertTrue(p > 0)
+          assertEquals("Test".substring(0, p), String(file.readBytes()))
+        }
+      }
+      finally {
+        file.delete()
+      }
+    }
+  }
+
+  @Test fun testWriteAll() {
+    File.createTempFile("test", "file").let { file ->
+      try {
+        file.writeBytes(byteArrayOf())
+        val bytes = SecureRandom.getSeed(32*1024*1024)
+        runBlocking {
+          async {
+            val buffer = ByteBuffer.wrap(bytes)
+            AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE).use {
+              val p = it.writeFrom(buffer, 0, true)
+              assertEquals(buffer.capacity().toLong(), p)
+              assertEquals(bytes.size.toLong(), file.length())
+            }
+          }.await()
+        }
+      }
+      finally {
+        file.delete()
+      }
+    }
+  }
+
+  @Test fun testWriteTimeout() {
+    File.createTempFile("test", "file").let { file ->
+      try {
+        file.writeBytes(byteArrayOf())
+        val bytes = SecureRandom.getSeed(128*1024*1024)
+        val buffer = ByteBuffer.wrap(bytes)
+        val channel = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE)
+        runBlocking {
+          channel.use {
+            try {
+              async {
+                withTimeout(50L) {
+                  val p = it.writeFrom(buffer, 0, true)
+                  fail<Nothing>()
+                }
+              }.await()
+            }
+            catch (e: TimeoutCancellationException) {
+              assertFalse(channel.isOpen)
+            }
           }
         }
       }
