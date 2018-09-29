@@ -81,7 +81,7 @@ class FileTests {
             try {
               async {
                 withTimeout(50L) {
-                  val p = it.readTo(buffer, 0, true)
+                  it.readTo(buffer, 0, true)
                   fail<Nothing>()
                 }
               }.await()
@@ -151,7 +151,7 @@ class FileTests {
             try {
               async {
                 withTimeout(50L) {
-                  val p = it.writeFrom(buffer, 0, true)
+                  it.writeFrom(buffer, 0, true)
                   fail<Nothing>()
                 }
               }.await()
@@ -176,8 +176,8 @@ class FileTests {
         val bytes2 = SecureRandom.getSeed(128*1024*1024)
         val c1 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE)
         val c2 = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE)
-        c1.use { _ ->
-          c2.use { _ ->
+        c1.use {
+          c2.use {
             try {
               runBlocking {
                 launch {
