@@ -24,7 +24,7 @@ class FileTests {
         val buffer = ByteBuffer.allocate(64)
         AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
           val p = runBlocking {
-            it.readTo(buffer, 0)
+            it.asyncRead(buffer, 0)
           }.toInt()
           buffer.flip()
           assertTrue(p > 0)
@@ -47,16 +47,16 @@ class FileTests {
             launch {
               val buffer = ByteBuffer.allocate(32*1024*1024-1)
               AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
-                val p = it.readTo(buffer, 0, true)
+                val p = it.asyncRead(buffer, 0, true)
                 assertEquals(buffer.capacity().toLong(), p)
                 buffer.clear()
-                assertEquals(1L, it.readTo(buffer, p))
+                assertEquals(1L, it.asyncRead(buffer, p))
               }
             },
             launch {
               val buffer = ByteBuffer.allocate(32*1024*1024+1)
               AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ).use {
-                val p = it.readTo(buffer, 0, true)
+                val p = it.asyncRead(buffer, 0, true)
                 assertEquals(buffer.capacity().toLong() - 1, p)
               }
             }
@@ -81,7 +81,7 @@ class FileTests {
             try {
               async {
                 withTimeout(50L) {
-                  it.readTo(buffer, 0, true)
+                  it.asyncRead(buffer, 0, true)
                   fail<Nothing>()
                 }
               }.await()
@@ -105,7 +105,7 @@ class FileTests {
         val buffer = ByteBuffer.wrap("Test".toByteArray())
         AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE).use {
           val p = runBlocking {
-            it.writeFrom(buffer, 0)
+            it.asyncWrite(buffer, 0)
           }.toInt()
           assertTrue(p > 0)
           assertEquals("Test".substring(0, p), String(file.readBytes()))
@@ -126,7 +126,7 @@ class FileTests {
           async {
             val buffer = ByteBuffer.wrap(bytes)
             AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.WRITE).use {
-              val p = it.writeFrom(buffer, 0, true)
+              val p = it.asyncWrite(buffer, 0, true)
               assertEquals(buffer.capacity().toLong(), p)
               assertEquals(bytes.size.toLong(), file.length())
             }
@@ -151,7 +151,7 @@ class FileTests {
             try {
               async {
                 withTimeout(50L) {
-                  it.writeFrom(buffer, 0, true)
+                  it.asyncWrite(buffer, 0, true)
                   fail<Nothing>()
                 }
               }.await()
@@ -181,16 +181,16 @@ class FileTests {
             try {
               runBlocking {
                 launch {
-                  c1.acquireLock().use {
+                  c1.asyncLock().use {
                     val n = bytes1.size
                     var pos = 0L
-                    while (pos < n) pos += c1.writeFrom(ByteBuffer.wrap(bytes1), pos)
+                    while (pos < n) pos += c1.asyncWrite(ByteBuffer.wrap(bytes1), pos)
                   }
                 }
                 launch {
                   val n = bytes2.size
                   var pos = 0L
-                  while (pos < n) pos += c2.writeFrom(ByteBuffer.wrap(bytes2), pos)
+                  while (pos < n) pos += c2.asyncWrite(ByteBuffer.wrap(bytes2), pos)
                 }
               }
               fail<Nothing>()

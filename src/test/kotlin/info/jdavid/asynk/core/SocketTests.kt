@@ -25,7 +25,7 @@ class SocketTests {
       runBlocking {
         launch {
           withTimeout(1000L) {
-            while (isActive) server.connect()
+            while (isActive) server.asyncAccept()
           }
         }.join()
         assertFalse(server.isOpen)
@@ -41,17 +41,17 @@ class SocketTests {
         runBlocking {
           val accept = launch {
             while (isActive) {
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
-                socket1.writeFrom(ByteBuffer.wrap("Test".toByteArray()), true)
+                socket1.asyncWrite(ByteBuffer.wrap("Test".toByteArray()), true)
               }
             }
           }
           joinAll(
             launch {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               val buffer = ByteBuffer.allocate(512)
-              val n = socket2.readTo(buffer)
+              val n = socket2.asyncRead(buffer)
               buffer.flip()
               assertTrue(n > 0L)
               assertEquals("Test".substring(0, n.toInt()),
@@ -73,17 +73,17 @@ class SocketTests {
           val accept = launch {
             val bytes = SecureRandom.getSeed(1024 * 1024)
             while (isActive) {
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
-                while (true) socket1.writeFrom(ByteBuffer.wrap(bytes), true)
+                while (true) socket1.asyncWrite(ByteBuffer.wrap(bytes), true)
               }
             }
           }
           joinAll(
             launch {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               val buffer = ByteBuffer.allocate(32*1024*1024)
-              val n = socket2.readTo(buffer, true)
+              val n = socket2.asyncRead(buffer, true)
               assertEquals(buffer.capacity().toLong(), n)
             }
           )
@@ -102,18 +102,18 @@ class SocketTests {
           val accept = launch {
             val bytes = SecureRandom.getSeed(1024 * 1024)
             while (isActive) {
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
-                while (true) socket1.writeFrom(ByteBuffer.wrap(bytes), true)
+                while (true) socket1.asyncWrite(ByteBuffer.wrap(bytes), true)
               }
             }
           }
           try {
             async {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               val buffer = ByteBuffer.allocate(32 * 1024 * 1024)
               withTimeout(50L) {
-                socket2.readTo(buffer, true)
+                socket2.asyncRead(buffer, true)
                 fail<Nothing>()
               }
             }.await()
@@ -136,10 +136,10 @@ class SocketTests {
           val bytes = "Test\r\n".toByteArray()
           val accept = launch {
             while (isActive) {
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
                 val buffer = ByteBuffer.allocate(bytes.size)
-                socket1.readTo(buffer, true)
+                socket1.asyncRead(buffer, true)
                 buffer.flip()
                 assertEquals("Test\r\n",
                              String(ByteArray(buffer.remaining()).apply { buffer.get(this) }))
@@ -148,9 +148,9 @@ class SocketTests {
           }
           joinAll(
             launch {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               (0..10).forEach {
-                val n = socket2.writeFrom(ByteBuffer.wrap(bytes), true)
+                val n = socket2.asyncWrite(ByteBuffer.wrap(bytes), true)
                 assertEquals(bytes.size.toLong(), n)
               }
               delay(100)
@@ -172,19 +172,19 @@ class SocketTests {
             val buffer = ByteBuffer.allocate(32 * 1024 * 1024)
             while (isActive) {
               buffer.clear()
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
-                val n = socket1.readTo(buffer, true)
+                val n = socket1.asyncRead(buffer, true)
                 assertEquals(buffer.capacity().toLong(), n)
               }
             }
           }
           joinAll(
             launch {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               val bytes = SecureRandom.getSeed(1024 * 1024)
               (0..32).forEach {
-                val n = socket2.writeFrom(ByteBuffer.wrap(bytes), true)
+                val n = socket2.asyncWrite(ByteBuffer.wrap(bytes), true)
                 assertEquals(bytes.size.toLong(), n)
               }
               delay(100)
@@ -206,20 +206,20 @@ class SocketTests {
             val buffer = ByteBuffer.allocate(32 * 1024 * 1024)
             while (isActive) {
               buffer.clear()
-              val socket1 = server.connect()
+              val socket1 = server.asyncAccept()
               launch {
-                val n = socket1.readTo(buffer, true)
+                val n = socket1.asyncRead(buffer, true)
                 assertEquals(buffer.capacity().toLong(), n)
               }
             }
           }
           try {
             launch {
-              socket2.connectTo(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
+              socket2.asyncConnect(InetSocketAddress(InetAddress.getLoopbackAddress(), port))
               val bytes = SecureRandom.getSeed(1024 * 1024)
               withTimeout(150L) {
                 (0..32).forEach {
-                  val n = socket2.writeFrom(ByteBuffer.wrap(bytes), true)
+                  val n = socket2.asyncWrite(ByteBuffer.wrap(bytes), true)
                   assertEquals(bytes.size.toLong(), n)
                 }
                 fail<Nothing>()
