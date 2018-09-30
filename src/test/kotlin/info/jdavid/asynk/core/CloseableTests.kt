@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Assertions.*
 class CloseableTests {
 
   class TestCloseable: AsyncCloseable {
-    internal var closed = false
+    public var closed = false
+      private set
     override suspend fun close() {
       closed = true
     }
