@@ -1,4 +1,4 @@
-![jcenter](https://img.shields.io/badge/_jcenter_-0.0.0.16.1-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-16/16-green.png?style=flat)
+![jcenter](https://img.shields.io/badge/_jcenter_-0.0.0.16.2-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-16/16-green.png?style=flat)
 # Asynk core library
 Code shared between the various asynk libraries.
 
