@@ -20,21 +20,25 @@ interface AsyncCloseable {
 suspend inline fun <reified T: AsyncCloseable?, R> T.use(block: (T) -> R): R =
   info.jdavid.asynk.core.internal.use(this, block)
 
+@Suppress("TooGenericExceptionCaught")
 inline fun <reified T : AutoCloseable?, R> T.use(block: (T) -> R): R {
   var exception: Throwable? = null
   try {
     return block(this)
-  } catch (e: Throwable) {
+  }
+  catch (e: Throwable) {
     exception = e
     throw e
-  } finally {
+  }
+  finally {
     when {
-      this == null -> {}
+      this == null -> Unit
       exception == null -> close()
       else ->
         try {
           close()
-        } catch (closeException: Throwable) {
+        }
+        catch (closeException: Throwable) {
           exception.addSuppressed(closeException)
         }
     }
@@ -42,8 +46,8 @@ inline fun <reified T : AutoCloseable?, R> T.use(block: (T) -> R): R {
 }
 
 fun Closeable?.closeSilently() {
-  try { this?.close() } catch (ignore: IOException) {}
+  @Suppress("TooGenericExceptionCaught") try { this?.close() } catch (ignore: IOException) {}
 }
 suspend fun AsyncCloseable?.closeSilently() {
-  try { this?.close() } catch (ignore: IOException) {}
+  @Suppress("TooGenericExceptionCaught") try { this?.close() } catch (ignore: IOException) {}
 }

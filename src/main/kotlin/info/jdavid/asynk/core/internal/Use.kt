@@ -2,6 +2,7 @@ package info.jdavid.asynk.core.internal
 
 import info.jdavid.asynk.core.AsyncCloseable
 
+@Suppress("TooGenericExceptionCaught")
 suspend inline fun <T: AsyncCloseable?, R> use(c: T, block: (T) -> R): R {
   var exception: Throwable? = null
   try {

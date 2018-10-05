@@ -7,6 +7,7 @@ plugins {
   id("org.jetbrains.dokka") version "0.9.17"
   `maven-publish`
   id("com.jfrog.bintray") version "1.8.4"
+  id("io.gitlab.arturbosch.detekt").version("1.0.0.RC9.2")
 }
 
 group = "info.jdavid.asynk"
@@ -32,6 +33,10 @@ tasks.compileTestKotlin {
   kotlinOptions {
     jvmTarget = "1.8"
   }
+}
+
+tasks.jar {
+  dependsOn("detekt")
 }
 
 tasks.dokka {
@@ -109,4 +114,8 @@ bintray {
       })
     })
   })
+}
+
+tasks.bintrayUpload {
+  dependsOn("check")
 }

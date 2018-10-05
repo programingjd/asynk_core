@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package info.jdavid.asynk.core
 
 import kotlinx.coroutines.CancellationException
