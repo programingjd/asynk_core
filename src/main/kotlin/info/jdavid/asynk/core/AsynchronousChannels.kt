@@ -1,9 +1,9 @@
 package info.jdavid.asynk.core
 
-import kotlinx.coroutines.experimental.CancellationException
-import kotlinx.coroutines.experimental.CancellableContinuation
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.SocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousByteChannel
@@ -13,7 +13,9 @@ import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
 import java.nio.channels.FileLock
-import kotlin.coroutines.experimental.Continuation
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Performs [AsynchronousFileChannel.lock] without blocking a thread and resumes when asynchronous operation

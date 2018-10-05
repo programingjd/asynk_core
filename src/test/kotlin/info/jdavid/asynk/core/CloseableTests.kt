@@ -1,13 +1,13 @@
 package info.jdavid.asynk.core
 
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
 class CloseableTests {
 
   class TestCloseable: AsyncCloseable {
-    public var closed = false
+    var closed = false
       private set
     override suspend fun close() {
       closed = true
