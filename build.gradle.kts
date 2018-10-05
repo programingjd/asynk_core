@@ -1,6 +1,13 @@
 @file:Suppress("RemoveCurlyBracesFromTemplate")
 
+import java.io.FileInputStream
+import java.io.FileWriter
 import com.jfrog.bintray.gradle.BintrayExtension
+import org.cyberneko.html.parsers.DOMParser
+import org.w3c.dom.Node
+import org.xml.sax.InputSource
+import javax.xml.xpath.XPathConstants
+import javax.xml.xpath.XPathFactory
 
 plugins {
   kotlin("jvm") version KOTLIN.version
@@ -118,4 +125,36 @@ bintray {
 
 tasks.bintrayUpload {
   dependsOn("check")
+}
+
+tasks.test {
+  doLast {
+    DOMParser().also { parser ->
+      parser.parse(InputSource(FileInputStream(reports.html.entryPoint)))
+      XPathFactory.newInstance().newXPath().apply {
+        val total =
+          (evaluate("DIV", parser.document.getElementById("tests"), XPathConstants.NODE) as Node).
+            textContent.toInt()
+        val failed =
+          (evaluate("DIV", parser.document.getElementById("failures"), XPathConstants.NODE) as Node).
+            textContent.toInt()
+        val badge = { label: String, text: String, color: String ->
+          "https://img.shields.io/badge/_${label}_-${text}-${color}.png?style=flat"
+        }
+        val color = if (failed == 0) "green" else if (failed < 3) "yellow" else "red"
+        File("README.md").apply {
+          readLines().mapIndexed { i, line ->
+            when (i) {
+              0 -> "![jcenter](${badge("jcenter", "${project.version}", "6688ff")}) &#x2003; " +
+                   "![jcenter](${badge("Tests", "${total-failed}/${total}", color)})"
+              else -> line
+            }
+          }.joinToString("\n").also { line ->
+            FileWriter(this).use { it.write(line) }
+          }
+        }
+      }
+    }
+  }
+
 }

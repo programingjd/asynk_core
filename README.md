@@ -1,4 +1,4 @@
-![jcenter](https://img.shields.io/badge/_jcenter_-0.0.0.16.2-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-16/16-green.png?style=flat)
+![jcenter](https://img.shields.io/badge/_jcenter_-0.0.0.17-6688ff.png?style=flat) &#x2003; ![jcenter](https://img.shields.io/badge/_Tests_-17/17-green.png?style=flat)
 # Asynk core library
 Code shared between the various asynk libraries.
 
@@ -8,17 +8,17 @@ Code shared between the various asynk libraries.
 
 ```kotlin
 class Example: AsyncCloseable {
-  public var closed = false
+  var closed = false
     private set
   
   @Override suspend fun close() {
-    ...
+    //...
   }    
 }
 
 runBlocking {
   Example().use {
-    ...
+    //...
   }.apply {
     assertTrue(closed)
   }
