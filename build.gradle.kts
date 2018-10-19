@@ -27,8 +27,8 @@ repositories {
 dependencies {
   implementation("org.jetbrains.kotlin:kotlin-stdlib:${KOTLIN.version}")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${KOTLINX.version}")
-  testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.0")
-  testRuntime("org.junit.jupiter:junit-jupiter-engine:5.3.0")
+  testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.1")
+  testRuntime("org.junit.jupiter:junit-jupiter-engine:5.3.1")
 }
 
 tasks.compileKotlin {
@@ -156,5 +156,4 @@ tasks.test {
       }
     }
   }
-
 }
