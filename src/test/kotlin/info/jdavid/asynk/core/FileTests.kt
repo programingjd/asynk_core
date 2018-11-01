@@ -74,7 +74,7 @@ class FileTests {
       try {
         val bytes = SecureRandom.getSeed(128*1024*1024)
         file.writeBytes(bytes)
-        val buffer = ByteBuffer.allocate(128 * 1024 * 1024 - 1)
+        val buffer = ByteBuffer.allocate(128*1024*1024-1)
         val channel = AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ)
         runBlocking {
           channel.use {

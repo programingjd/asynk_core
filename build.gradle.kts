@@ -64,6 +64,7 @@ tasks.test {
   testLogging {
     events("passed", "skipped", "failed")
   }
+  jvmArgs("-XX:MaxDirectMemorySize=1024m")
 }
 
 tasks.jar {
