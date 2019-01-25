@@ -150,7 +150,7 @@ class FileTests {
           channel.use {
             try {
               async {
-                withTimeout(20L) {
+                withTimeout(5L) {
                   it.asyncWrite(buffer, 0, true)
                   fail<Nothing>()
                 }
