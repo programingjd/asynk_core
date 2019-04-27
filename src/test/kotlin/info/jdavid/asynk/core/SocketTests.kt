@@ -21,20 +21,22 @@ import java.security.SecureRandom
 class SocketTests {
 
   @Test fun testAcceptTimeout() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    server.use {
       runBlocking {
         launch {
           withTimeout(1000L) {
-            while (isActive) server.asyncAccept()
+            while (isActive) it.asyncAccept()
           }
         }.join()
-        assertFalse(server.isOpen)
       }
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testRead() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -61,11 +63,14 @@ class SocketTests {
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testReadMany() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -90,11 +95,14 @@ class SocketTests {
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testReadTimeout() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -118,17 +126,18 @@ class SocketTests {
               }
             }.await()
           }
-          catch (e: TimeoutCancellationException) {
-            assertFalse(socket2.isOpen)
-          }
+          catch (e: TimeoutCancellationException) {}
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testWrite() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING")  server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -159,11 +168,14 @@ class SocketTests {
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testWriteMany() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -193,11 +205,14 @@ class SocketTests {
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
   @Test fun testWriteTimeout() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       val socket2 = AsynchronousSocketChannel.open()
       socket2.use {
@@ -232,7 +247,9 @@ class SocketTests {
           accept.cancelAndJoin()
         }
       }
+      assertFalse(socket2.isOpen)
     }
+    assertFalse(server.isOpen)
   }
 
 }

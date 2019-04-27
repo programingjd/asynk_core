@@ -21,7 +21,8 @@ import java.nio.channels.AsynchronousSocketChannel
 class TimeoutTests {
 
   @Test fun testReadTimeout() {
-    AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0)).use { server ->
+    val server = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(0))
+    @Suppress("NAME_SHADOWING") server.use { server ->
       val port = (server.localAddress as InetSocketAddress).port
       runBlocking {
         val channel0 = Channel<Int>(Channel.UNLIMITED)
@@ -67,6 +68,7 @@ class TimeoutTests {
         assertEquals(n, channel2.toList().size)
       }
     }
+    assertFalse(server.isOpen)
   }
 
 }

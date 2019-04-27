@@ -86,10 +86,9 @@ class FileTests {
                 }
               }.await()
             }
-            catch (e: TimeoutCancellationException) {
-              assertFalse(channel.isOpen)
-            }
+            catch (e: TimeoutCancellationException) {}
           }
+          assertFalse(channel.isOpen)
         }
       }
       finally {
@@ -156,10 +155,9 @@ class FileTests {
                 }
               }.await()
             }
-            catch (e: TimeoutCancellationException) {
-              assertFalse(channel.isOpen)
-            }
+            catch (e: TimeoutCancellationException) {}
           }
+          assertFalse(channel.isOpen)
         }
       }
       finally {
